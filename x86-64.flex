@@ -1,4 +1,4 @@
-macro %number ( instruction_location ( 104:1 %number:4 ) )
+macro %number:number ( instruction_location ( 104:1 %number:4 ) )
 
 macro push_thing %thing ( instruction_location ( 104:1 %thing ) )
 

@@ -23,17 +23,15 @@ def matches_token(tokens, index, macro_token):
             if part_first == macro_token:
                 return True
 
-    if macro_token == "%string":
-        return tokens[index][0] == '"' and tokens[index][-1] == '"'
-
-    if macro_token == "%string:":
-        return tokens[index][0] == '"'
-
-    if macro_token == "%number":
-        return tokens[index].isnumeric()
-
     if macro_token[0] == "%":
-        return True
+        if ':' in macro_token:
+            specifier = macro_token[macro_token.index(':') + 1 :]
+            if specifier == "string":
+                return tokens[index][0] == '"' and tokens[index][-1] == '"'
+            elif specifier == "number":
+                return tokens[index].isnumeric()
+        else:
+            return True
 
     return False
 
@@ -49,6 +47,8 @@ def generate_binding(tokens, index, macro_token):
     if macro_token[0] == '%':
         if macro_token[-1] == ':':
             bindings[macro_token[0:-1]] = tokens[index] + ':'
+        elif ':' in macro_token:
+            bindings[macro_token[0 : macro_token.index(':')]] = tokens[index]
         else:
             bindings[macro_token] = tokens[index]
 
@@ -125,9 +125,8 @@ def parse(tokens):
             in_macro_count += 1
         elif token == "alias":
             index += 3
-        #elif token[0] == '$' and not ':' in token:
-        #    index += 2
-        #    in_macro_count += 1
+        elif token == "write_final":
+            index += 1
         elif token == "(":
             if in_macro_count > 0:
                 in_macro_count += 1
@@ -159,11 +158,13 @@ def parse(tokens):
 
     return tokens
 
-def output(tokens):
+def finalize(tokens):
     to_adjust = []
     buffers = []
     for _ in range(3):
         buffers.append(b'')
+
+    to_write = []
 
     in_macro_count = 0
     index = 0
@@ -191,7 +192,6 @@ def output(tokens):
             index += 1
         
         if in_macro_count == 0 and old_in_macro_count == 0:
-            #print(token)
             if token[0] == '$' and not ':' in token:
                 id = int(token[1:])
 
@@ -204,7 +204,6 @@ def output(tokens):
                         size = 0
                     except IndexError:
                         size = 0
-                    #print(tokens[index])
 
                     value = 0
                     to_adjust_temp = []
@@ -235,6 +234,16 @@ def output(tokens):
                     index += 1
 
                 index += 1
+            elif token == "write_final":
+                location = tokens[index]
+                index += 2
+                buffers_to_write = []
+                while not tokens[index] == ")":
+                    buffers_to_write.append(int(tokens[index][1:]))
+                    index += 1
+
+                to_write.append((location, buffers_to_write))
+                index += 1
 
     for to_adjust_small in to_adjust:
         for id, id2, extra, size, location in to_adjust_small:
@@ -251,11 +260,11 @@ def output(tokens):
                 buffer_bytes = int.from_bytes(buffer[location : location + size], "little")
                 buffers[id] = buffer[0 : location] + (length + buffer_bytes).to_bytes(size, "little") + buffer[location + size:]
     
-    output_file = open("output", "wb")
-    for i in range(3):
-        output_file.write(buffers[i])
-
-    output_file.close()
+    for to_write in to_write:
+        file = open(to_write[0], "wb")
+        for buffer in to_write[1]:
+            file.write(buffers[buffer])
+        file.close()
     
 tokens = []
 for file in sys.argv[1:]:
@@ -263,4 +272,4 @@ for file in sys.argv[1:]:
     tokens.extend(tokenize(contents))
 
 tokens = parse(tokens)
-output(tokens)
+finalize(tokens)
