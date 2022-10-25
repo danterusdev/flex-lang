@@ -251,14 +251,6 @@ def finalize(tokens):
                 buffer = buffers[id]
                 buffer_bytes = int.from_bytes(buffer[location : location + size], "little")
                 buffers[id] = buffer[0 : location] + (len(buffers[id2]) + buffer_bytes).to_bytes(size, "little") + buffer[location + size:]
-            elif extra == "final_offset":
-                length = 0
-                for i in range(id2):
-                    length += len(buffers[i])
-
-                buffer = buffers[id]
-                buffer_bytes = int.from_bytes(buffer[location : location + size], "little")
-                buffers[id] = buffer[0 : location] + (length + buffer_bytes).to_bytes(size, "little") + buffer[location + size:]
     
     for to_write in to_write:
         file = open(to_write[0], "wb")
