@@ -160,9 +160,7 @@ def parse(tokens):
 
 def finalize(tokens):
     to_adjust = []
-    buffers = []
-    for _ in range(3):
-        buffers.append(b'')
+    buffers = {}
 
     to_write = []
 
@@ -192,8 +190,10 @@ def finalize(tokens):
             index += 1
         
         if in_macro_count == 0 and old_in_macro_count == 0:
-            if token[0] == '$' and not ':' in token:
-                id = int(token[1:])
+            if token[0] == '$' and token.endswith(":buffer:push"):
+                id = token.split(':')[0][1:]
+                if not id in buffers:
+                    buffers[id] = b''
 
                 index += 1
 
@@ -217,9 +217,12 @@ def finalize(tokens):
                             value += int(statement)
                         elif tokens[index][0] == '"':
                             buffers[id] += bytes(tokens[index][1: -2], "utf-8")
-                        elif tokens[index][0] == '$' and ':' in tokens[index]:
-                            id2 = int(statement[1 : statement.index(':')])
-                            extra = statement[statement.index(':') + 1 : ]
+                        elif statement[0] == '$' and ':' in statement:
+                            id2 = statement.split(':')[0][1:]
+                            extra = statement[statement.rindex(':') + 1 : ]
+
+                            if not id2 in buffers:
+                                buffers[id2] = b''
 
                             if extra == "location":
                                 value += len(buffers[id2])
@@ -239,7 +242,9 @@ def finalize(tokens):
                 index += 2
                 buffers_to_write = []
                 while not tokens[index] == ")":
-                    buffers_to_write.append(int(tokens[index][1:]))
+                    name = tokens[index].split(':')[0][1:]
+                    buffers_to_write.append(name)
+                    #buffers_to_write.append(int(tokens[index][1:]))
                     index += 1
 
                 to_write.append((location, buffers_to_write))
