@@ -8,4 +8,4 @@ macro %string:string ( push_thing $bss:buffer:location+$header:buffer:final_loca
 
 header
 
-write_final output ( $header:buffer $instructions:buffer $bss:buffer )
+final ( write output ( $header:buffer $instructions:buffer $bss:buffer ) )

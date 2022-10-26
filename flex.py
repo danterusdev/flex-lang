@@ -125,8 +125,6 @@ def parse(tokens):
             in_macro_count += 1
         elif token == "alias":
             index += 3
-        elif token == "write_final":
-            index += 1
         elif token == "(":
             if in_macro_count > 0:
                 in_macro_count += 1
@@ -162,7 +160,7 @@ def finalize(tokens):
     to_adjust = []
     buffers = {}
 
-    to_write = []
+    final_tokens = []
 
     in_macro_count = 0
     index = 0
@@ -237,17 +235,19 @@ def finalize(tokens):
                     index += 1
 
                 index += 1
-            elif token == "write_final":
+            elif token == "final":
                 location = tokens[index]
-                index += 2
-                buffers_to_write = []
-                while not tokens[index] == ")":
-                    name = tokens[index].split(':')[0][1:]
-                    buffers_to_write.append(name)
-                    #buffers_to_write.append(int(tokens[index][1:]))
+                index += 1
+                inside = 1
+                while inside > 0:
+                    final_tokens.append(tokens[index])
                     index += 1
 
-                to_write.append((location, buffers_to_write))
+                    if tokens[index] == '(':
+                        inside += 1
+                    elif tokens[index] == ')':
+                        inside -= 1
+
                 index += 1
 
     for to_adjust_small in to_adjust:
@@ -256,12 +256,27 @@ def finalize(tokens):
                 buffer = buffers[id]
                 buffer_bytes = int.from_bytes(buffer[location : location + size], "little")
                 buffers[id] = buffer[0 : location] + (len(buffers[id2]) + buffer_bytes).to_bytes(size, "little") + buffer[location + size:]
-    
-    for to_write in to_write:
-        file = open(to_write[0], "wb")
-        for buffer in to_write[1]:
-            file.write(buffers[buffer])
-        file.close()
+
+    index = 0
+    while index < len(final_tokens):
+        if final_tokens[index] == "write":
+            output_file = final_tokens[index + 1]
+            index += 3
+            file = open(output_file, "wb")
+            while not final_tokens[index] == ")":
+                file.write(buffers[final_tokens[index].split(':')[0][1:]])
+                index += 1
+
+            file.close()
+            index += 1
+        else:
+            index += 1
+
+    #for to_write in to_write:
+    #    file = open(to_write[0], "wb")
+    #    for buffer in to_write[1]:
+    #        file.write(buffers[buffer])
+    #    file.close()
     
 tokens = []
 for file in sys.argv[1:]:
