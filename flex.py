@@ -13,35 +13,58 @@ def tokenize(contents):
 
     return tokens
 
-def matches_token(tokens, index, macro_token):
+def matches_token(tokens, index, macro_index, definition):
+    macro_token = definition[macro_index]
     if tokens[index] == macro_token:
-        return True
+        return True, index + 1
+
+    if macro_token == "((" and tokens[index] == "(":
+        return True, index + 1
+    if macro_token == "))" and tokens[index] == ")":
+        return True, index + 1
 
     for part in tokens[index].split('+'):
         if ':' in part:
             part_first = part[0 : part.index(':')]
             if part_first == macro_token:
-                return True
+                return True, index + 1
 
     if macro_token[0] == "%":
         if ':' in macro_token:
             specifier = macro_token[macro_token.index(':') + 1 :]
             if specifier == "string":
-                return tokens[index][0] == '"' and tokens[index][-1] == '"'
+                return tokens[index][0] == '"' and tokens[index][-1] == '"', index + 1
             elif specifier == "number":
-                return tokens[index].isnumeric()
-        else:
-            return True
+                return tokens[index].isnumeric(), index + 1
+        elif macro_token.endswith(".."):
+            matches = False
+            while not matches:
+                matches, _ = matches_token(tokens, index, macro_index + 1, definition)
+                index += 1
 
-    return False
+            return True, index - 1
+        else:
+            return True, index + 1
+
+    return False, index + 1
+
+flag = False
 
 def matches_macro(tokens, index, definition):
-    for macro_index, macro_token in enumerate(definition):
-        if not matches_token(tokens, index + macro_index, macro_token):
+    global flag
+
+    macro_index = 0
+    while macro_index < len(definition):
+        matches, index = matches_token(tokens, index, macro_index, definition)
+        if not matches:
             return False
+
+        macro_index += 1
+
     return True
 
-def generate_binding(tokens, index, macro_token):
+def generate_binding(tokens, index, macro_index, definition):
+    macro_token = definition[macro_index]
     bindings = {}
 
     if macro_token[0] == '%':
@@ -49,18 +72,38 @@ def generate_binding(tokens, index, macro_token):
             bindings[macro_token[0:-1]] = tokens[index] + ':'
         elif ':' in macro_token:
             bindings[macro_token[0 : macro_token.index(':')]] = tokens[index]
+        elif macro_token.endswith(".."):
+            new_binding = []
+            while True:
+                new_binding.append(tokens[index])
+                matches, index = matches_token(tokens, index, macro_index + 1, definition)
+
+                if matches:
+                    break
+                #print(tokens[index])
+                #print(definition[macro_index + 1])
+            new_binding.pop()
+            bindings[macro_token[0:-2]] = new_binding
         else:
             bindings[macro_token] = tokens[index]
 
-    return bindings
+    return bindings, index + 1
 
 def generate_bindings(tokens, index, definition):
     bindings = {}
 
-    for macro_index, macro_token in enumerate(definition):
-        bindings.update(generate_binding(tokens, index + macro_index, macro_token))
+    for macro_index in range(len(definition)):
+        bindings_new, index = generate_binding(tokens, index, macro_index, definition)
+        bindings.update(bindings_new)
 
     return bindings
+
+def is_str_int(string):
+    try:
+        int(string)
+        return True
+    except ValueError:
+        return False
 
 def get_expansion(expansion, bindings):
     new_expansion = []
@@ -71,7 +114,17 @@ def get_expansion(expansion, bindings):
             main_part = main_part[0 : main_part.index(':')]
 
         if main_part in bindings:
-            new_expansion.append(token.replace(main_part, bindings[main_part]))
+            if token in bindings:
+                if isinstance(bindings[main_part], list):
+                    new_expansion.extend(bindings[main_part])
+                else:
+                    new_expansion.append(bindings[main_part])
+            elif ':' in token and is_str_int(token[token.index(':') + 1:]):
+                new_expansion.append(token.replace(main_part, bindings[main_part]))
+            elif token[-1] == ':':
+                new_expansion.append(token.replace(main_part, bindings[main_part]))
+            else:
+                print(token)
         elif token[0] == '\\':
             new_expansion.append(token[1:])
         else:
@@ -137,6 +190,14 @@ def parse(tokens):
             if in_macro_count == 0:
                 found = False
                 for definition_index, definition in enumerate(macro_definitions):
+                    global flag
+                    flag = False
+                    #if definition[0] == "foo" and tokens[index] == "foo":
+                    #    flag = True
+                    #    print(definition)
+                    #    print(tokens[index:index + 10])
+                    #    print(matches_macro(tokens, index, definition))
+
                     if matches_macro(tokens, index, definition):
                         bindings = generate_bindings(tokens, index, definition)
                         tokens = tokens[0 : index] + get_expansion(macro_expansions[definition_index], bindings) + tokens[index + len(definition):]

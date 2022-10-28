@@ -4,6 +4,8 @@ macro program_header_instructions ( 1:4 5:4 0:8 4194304:8 4194304:8 $instruction
 macro program_header_data ( 1:4 4:4 $header:buffer:final_location+$instructions:buffer:final_location:8 $header:buffer:final_location+$instructions:buffer:final_location+4194304+4096:8 $header:buffer:final_location+$instructions:buffer:final_location+4194304+4096:8 $bss:buffer:final_location:8 $bss:buffer:final_location:8 4096:8 )
 alias instruction_location $instructions:buffer:push
 
+macro push_instructions (( %instructions.. )) ( $instructions:buffer:push ( %instructions ) )
+
 macro %string:string ( push_thing $bss:buffer:location+$header:buffer:final_location+$instructions:buffer:final_location+4198400:4 $bss:buffer:push ( %string: ) )
 
 header
