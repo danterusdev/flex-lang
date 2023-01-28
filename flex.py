@@ -3,13 +3,17 @@ import sys
 def tokenize(contents):
     tokens = []
     buffer = ""
+    in_string = False
     for character in contents:
-        if character == ' ' or character == '\n':
+        if (character == ' ' or character == '\n') and not in_string:
             if buffer:
                 tokens.append(buffer)
                 buffer = ""
         else:
             buffer += character
+
+        if character == '"':
+            in_string = not in_string
 
     return tokens
 
@@ -36,6 +40,8 @@ def matches_token(tokens, index, macro_index, definition):
                 return tokens[index][0] == '"' and tokens[index][-1] == '"', index + 1
             elif specifier == "number":
                 return tokens[index].isnumeric(), index + 1
+            elif specifier == "[]":
+                return tokens[index][0] == '[' and tokens[index][-1] == ']', index + 1
         elif macro_token.endswith(".."):
             matches = False
             while not matches:
@@ -53,15 +59,16 @@ flag = False
 def matches_macro(tokens, index, definition):
     global flag
 
+    index_initial = index
     macro_index = 0
     while macro_index < len(definition):
         matches, index = matches_token(tokens, index, macro_index, definition)
         if not matches:
-            return False
+            return False, 0
 
         macro_index += 1
 
-    return True
+    return True, index - index_initial
 
 def generate_binding(tokens, index, macro_index, definition):
     macro_token = definition[macro_index]
@@ -80,8 +87,6 @@ def generate_binding(tokens, index, macro_index, definition):
 
                 if matches:
                     break
-                #print(tokens[index])
-                #print(definition[macro_index + 1])
             new_binding.pop()
             bindings[macro_token[0:-2]] = new_binding
         else:
@@ -189,23 +194,21 @@ def parse(tokens):
         else:
             if in_macro_count == 0:
                 found = False
-                for definition_index, definition in enumerate(macro_definitions):
-                    global flag
-                    flag = False
-                    #if definition[0] == "foo" and tokens[index] == "foo":
-                    #    flag = True
-                    #    print(definition)
-                    #    print(tokens[index:index + 10])
-                    #    print(matches_macro(tokens, index, definition))
 
-                    if matches_macro(tokens, index, definition):
+                expansions = []
+                max_matched = 0
+
+                for definition_index, definition in enumerate(macro_definitions):
+                    matches, size = matches_macro(tokens, index, definition)
+                    if matches:
                         bindings = generate_bindings(tokens, index, definition)
-                        tokens = tokens[0 : index] + get_expansion(macro_expansions[definition_index], bindings) + tokens[index + len(definition):]
+                        expansions.extend(get_expansion(macro_expansions[definition_index], bindings))
+                        max_matched = max(max_matched, size)
 
                         found = True
-                        break
 
                 if found:
+                    tokens = tokens[0 : index] + expansions + tokens[index + max_matched:]
                     index = 0
                     continue
 
@@ -219,7 +222,10 @@ def parse(tokens):
 
 def finalize(tokens):
     to_adjust = []
+
     buffers = {}
+    stacks = {}
+    maps = {}
 
     final_tokens = []
 
@@ -296,6 +302,45 @@ def finalize(tokens):
                     index += 1
 
                 index += 1
+            elif token[0] == '$' and token.endswith(":map:insert"):
+                id = token.split(':')[0][1:]
+                if not id in maps:
+                    maps[id] = {}
+
+                index += 1
+                maps[id][tokens[index]] = tokens[index + 1]
+
+                index += 3
+            elif token[0] == '$' and token.endswith(":stack:push"):
+                id = token.split(':')[0][1:]
+                if not id in stacks:
+                    stacks[id] = []
+
+                index += 1
+                while not tokens[index] == ")":
+                    stacks[id].append(tokens[index])
+                    index += 1
+
+                index += 1
+            elif token[0] == '$' and token.endswith(":stack:pop_check"):
+                id = token.split(':')[0][1:]
+                if not id in stacks:
+                    stacks[id] = []
+
+                failed = False
+
+                index += 1
+                while not tokens[index] == ")":
+                    if tokens[index][0] == '"':
+                        if failed:
+                            print(tokens[index][1:-2])
+                    else:
+                        popped = stacks[id].pop()
+                        if popped != tokens[index]:
+                            failed = True
+                    index += 1
+
+                index += 1
             elif token == "final":
                 location = tokens[index]
                 index += 1
@@ -333,11 +378,7 @@ def finalize(tokens):
         else:
             index += 1
 
-    #for to_write in to_write:
-    #    file = open(to_write[0], "wb")
-    #    for buffer in to_write[1]:
-    #        file.write(buffers[buffer])
-    #    file.close()
+    print(maps)
     
 tokens = []
 for file in sys.argv[1:]:
@@ -345,4 +386,5 @@ for file in sys.argv[1:]:
     tokens.extend(tokenize(contents))
 
 tokens = parse(tokens)
+print(tokens)
 finalize(tokens)
