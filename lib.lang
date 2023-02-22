@@ -1,0 +1,72 @@
+data:#buffer_contents instructions:#buffer_contents header:#buffer_contents output:#string :#write_3;2
+
+:macro header : file_header program_header_instructions program_header_data :
+
+:macro file_header :
+127:#number;0 header:#buffer_push_number_1
+ELF:#string;0 header:#buffer_push_string
+2:#number;0 header:#buffer_push_number_1
+1:#number;0 header:#buffer_push_number_1
+1:#number;0 header:#buffer_push_number_1
+3:#number;0 header:#buffer_push_number_1
+0:#number;0 header:#buffer_push_number_1
+0:#number;0 header:#buffer_push_number_7
+2:#number;0 header:#buffer_push_number_2
+62:#number;0 header:#buffer_push_number_2
+1:#number;0 header:#buffer_push_number_4
+4194304:#number;0 176:#number;0 :#+2 header:#buffer_push_number_8
+64:#number;0 header:#buffer_push_number_8
+0:#number;0 header:#buffer_push_number_8
+0:#number;0 header:#buffer_push_number_4
+64:#number;0 header:#buffer_push_number_2
+56:#number;0 header:#buffer_push_number_2
+2:#number;0 header:#buffer_push_number_2
+64:#number;0 header:#buffer_push_number_2
+0:#number;0 header:#buffer_push_number_2
+0:#number;0 header:#buffer_push_number_2
+:
+
+:macro program_header_instructions :
+1:#number;0 header:#buffer_push_number_4
+5:#number;0 header:#buffer_push_number_4
+0:#number;0 header:#buffer_push_number_8
+4194304:#number;0 header:#buffer_push_number_8
+4194304:#number;0 header:#buffer_push_number_8
+instructions:#buffer_location;1 header:#buffer_push_number_8
+instructions:#buffer_location;1 header:#buffer_push_number_8
+4096:#number;0 header:#buffer_push_number_8
+:
+
+:macro program_header_data :
+1:#number;0 header:#buffer_push_number_4
+4:#number;0 header:#buffer_push_number_4
+header:#buffer_location;1 instructions:#buffer_location;1 :#+2 header:#buffer_push_number_8
+header:#buffer_location;1 instructions:#buffer_location;1 4194304:#number;0 4096:#number;0 :#+4 header:#buffer_push_number_8
+header:#buffer_location;1 instructions:#buffer_location;1 4194304:#number;0 4096:#number;0 :#+4 header:#buffer_push_number_8
+data:#buffer_location;1 header:#buffer_push_number_8
+data:#buffer_location;1 header:#buffer_push_number_8
+4096:#number;0 header:#buffer_push_number_8
+:
+
+header
+
+:macro syscall : 15:#number;0 instructions:#buffer_push_number_1 5:#number;0 instructions:#buffer_push_number_1 :
+:macro syscall1 : 88:#number;0 instructions:#buffer_push_number_1 95:#number;0 instructions:#buffer_push_number_1 syscall :
+:macro syscall3 : 88:#number;0 instructions:#buffer_push_number_1 95:#number;0 instructions:#buffer_push_number_1 94:#number;0 instructions:#buffer_push_number_1 90:#number;0 instructions:#buffer_push_number_1 syscall :
+
+:macro %number:number : 104:#number;0 instructions:#buffer_push_number_1 %number:#number;0 instructions:#buffer_push_number_4 :
+
+:macro %string:string :
+104:#number;0 instructions:#buffer_push_number_1
+data:#buffer_location;0 header:#buffer_location;1 instructions:#buffer_location;1 4198400:#number;0 :#+4 instructions:#buffer_push_number_4
+%string:#string;0 data:#buffer_push_string
+:
+
+:macro sys_exit : 60:number syscall1 :
+:macro sys_write : 1:number syscall3 :
+
+:macro %label:label : instructions:#buffer_location;0 %label:#string labels:#map_put;0 :
+:macro jump %label : pre_mov_rax %label:#string labels:#map_get_number;1 4194304:#number;0 176:#number;0 :#+3 instructions:#buffer_push_number_8 jump_far :
+
+:macro pre_mov_rax : 72:#number;0 instructions:#buffer_push_number_1 184:#number;0 instructions:#buffer_push_number_1 :
+:macro jump_far : 255:#number;0 instructions:#buffer_push_number_1 224:#number;0 instructions:#buffer_push_number_1 :

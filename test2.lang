@@ -1,0 +1,9 @@
+test:label
+47:number
+[Hello my friends, this is a very cool language!]:string
+1:number
+sys_write
+jump test
+
+0:number
+sys_exit

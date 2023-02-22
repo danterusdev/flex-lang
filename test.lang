@@ -1,0 +1,7 @@
+:macro %bar2 : %bar2:test :
+:macro bar : thing :
+
+bar
+
+
+thing
