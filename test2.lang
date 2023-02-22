@@ -1,9 +1,19 @@
+:macro function %name :| %instruction:%type :... | : %name:label :( %instruction:%type :) ret :
+
 test:label
-47:number
-[Hello my friends, this is a very cool language!]:string
-1:number
-sys_write
+call bar
 jump test
 
 0:number
 sys_exit
+
+function bar
+    call foo
+|
+
+function foo
+    47:number
+    [Hello my friends, this is a very cool language!]:string
+    1:number
+    sys_write
+|

@@ -1,7 +1,3 @@
-:macro %bar2 : %bar2:test :
-:macro bar : thing :
+baz foo bar |
 
-bar
-
-
-thing
+:macro baz :| %test %test2 :... | : :( %test :) :

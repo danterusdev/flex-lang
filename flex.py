@@ -45,7 +45,6 @@ def matches(macro_start, macro_end, start, tokens, tokens_old):
     macro_index = macro_start
     token_index = start
 
-    repeat_group = False
     start_repeat_group = -1
 
     bindings = {}
@@ -56,17 +55,7 @@ def matches(macro_start, macro_end, start, tokens, tokens_old):
         if token_index >= len(tokens):
             return -1, None
 
-        if macro_token[0].startswith("%"):
-            if tokens[token_index][1] == macro_token[1]:
-                id = macro_token[0][1:]
-                if not id in bindings:
-                    bindings[id] = []
-                bindings[id].append(tokens[token_index][0])
-                token_index += 1
-                macro_index += 1
-            else:
-                return -1, None
-        elif macro_token[1] == "...":
+        if macro_token[1] == "...":
             if start_repeat_group == -1:
                 start_repeat_group = macro_index - 1
 
@@ -78,7 +67,6 @@ def matches(macro_start, macro_end, start, tokens, tokens_old):
             
             macro_index = start_repeat_group
         elif macro_token[1] == "|":
-            repeat_group = True
             start_repeat_group = macro_index + 1
             macro_index += 1
         else:
@@ -86,7 +74,24 @@ def matches(macro_start, macro_end, start, tokens, tokens_old):
                 token_index += 1
                 macro_index += 1
             else:
-                return -1, None
+                if macro_token[0].startswith("%"):
+                    id = macro_token[0][1:]
+                    if not id in bindings:
+                        bindings[id] = []
+                    bindings[id].append(tokens[token_index][0])
+                elif not tokens[token_index][0] == macro_token[0]:
+                    return -1, None
+
+                if macro_token[1].startswith("%"):
+                    id = macro_token[1][1:]
+                    if not id in bindings:
+                        bindings[id] = []
+                    bindings[id].append(tokens[token_index][1])
+                elif not tokens[token_index][1] == macro_token[1]:
+                    return -1, None
+
+                token_index += 1
+                macro_index += 1
 
     return token_index - start, bindings
 
@@ -101,12 +106,7 @@ def expand_macro(tokens, macro_start, macro_end, bindings):
     while location < macro_end:
         token = tokens[location]
 
-        if token[0] and token[0][0] == '%':
-            expanded.append((bindings[token[0][1:]][repeat_count], tokens[location][1]))
-            if not start_repeat == -1:
-                repeat_max_count = len(bindings[token[0][1:]])
-            location += 1
-        elif token[1] == "(":
+        if token[1] == "(":
             start_repeat = location + 1
             location += 1
         elif token[1] == ")":
@@ -120,7 +120,17 @@ def expand_macro(tokens, macro_start, macro_end, bindings):
 
             location = start_repeat
         else:
-            expanded.append(tokens[location])
+            new_token = (tokens[location][0], tokens[location][1])
+            if new_token[0] and new_token[0][0] == '%':
+                new_token = (bindings[new_token[0][1:]][repeat_count], new_token[1])
+                if not start_repeat == -1:
+                    repeat_max_count = len(bindings[token[0][1:]])
+            if new_token[1] and new_token[1][0] == '%':
+                new_token = (new_token[0], bindings[new_token[1][1:]][repeat_count])
+                if not start_repeat == -1:
+                    repeat_max_count = len(bindings[token[1][1:]])
+
+            expanded.append(new_token)
             location += 1
 
     return expanded

@@ -67,6 +67,9 @@ data:#buffer_location;0 header:#buffer_location;1 instructions:#buffer_location;
 
 :macro %label:label : instructions:#buffer_location;0 %label:#string labels:#map_put;0 :
 :macro jump %label : pre_mov_rax %label:#string labels:#map_get_number;1 4194304:#number;0 176:#number;0 :#+3 instructions:#buffer_push_number_8 jump_far :
+:macro call %label : pre_mov_rax %label:#string labels:#map_get_number;1 4194304:#number;0 176:#number;0 :#+3 instructions:#buffer_push_number_8 call_far :
+:macro ret : 195:#number;0 instructions:#buffer_push_number_1 :
 
 :macro pre_mov_rax : 72:#number;0 instructions:#buffer_push_number_1 184:#number;0 instructions:#buffer_push_number_1 :
 :macro jump_far : 255:#number;0 instructions:#buffer_push_number_1 224:#number;0 instructions:#buffer_push_number_1 :
+:macro call_far : 255:#number;0 instructions:#buffer_push_number_1 208:#number;0 instructions:#buffer_push_number_1 :
